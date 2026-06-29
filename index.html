@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Cameras</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: sans-serif;
+            background: #111;
+            color: #eee;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #1a1a1a;
+            padding: 10px 16px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 { font-size: 1rem; font-weight: 600; }
+
+        /* Tab bar */
+        #tabs {
+            display: flex;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: #888;
+            border-bottom: 2px solid transparent;
+            transition: color 0.15s, border-color 0.15s;
+            user-select: none;
+        }
+
+        .tab.active {
+            color: #eee;
+            border-bottom-color: #4a9;
+        }
+
+        /* Panels */
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* Stream */
+        .stream-container {
+            width: 100%;
+            background: #000;
+        }
+
+        .stream-frame {
+            width: 100%;
+            height: 56.25vw;
+            max-height: 60vh;
+            border: none;
+            display: block;
+        }
+
+        /* PTZ */
+        .ptz-section {
+            padding: 12px 16px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .ptz-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 52px);
+            grid-template-rows: repeat(3, 52px);
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .ptz-btn {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #eee;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.1s;
+        }
+
+        .ptz-btn:active { background: #444; }
+        .ptz-btn:disabled { opacity: 0.4; }
+        .ptz-center { background: #2d4a2d; border-color: #3d6a3d; font-size: 0.9rem; }
+
+        /* Video player */
+        .player-section {
+            display: none;
+            background: #000;
+            padding: 8px 16px;
+            border-bottom: 1px solid #333;
+        }
+
+        .player-title {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+
+        .video-player {
+            width: 100%;
+            max-height: 50vh;
+            background: #000;
+            display: block;
+        }
+
+        /* Recordings */
+        .recordings-section { padding: 12px 16px; }
+
+        .recordings-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .recordings-msg { font-size: 0.85rem; color: #555; padding: 4px 0; }
+
+        .folder-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+            gap: 8px;
+        }
+
+        .folder-row:last-child { border-bottom: none; }
+
+        .folder-chevron {
+            font-size: 0.7rem;
+            color: #666;
+            width: 14px;
+            flex-shrink: 0;
+            transition: transform 0.15s;
+        }
+
+        .folder-chevron.open { transform: rotate(90deg); }
+
+        .folder-info { flex: 1; min-width: 0; }
+
+        .folder-datetime {
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .folder-dirname { font-size: 0.7rem; color: #555; margin-top: 2px; }
+
+        .btn-del-folder {
+            background: #3a1a1a;
+            border: 1px solid #5a2a2a;
+            border-radius: 5px;
+            color: #e88;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }
+
+        .btn-del-folder:active { background: #5a2a2a; }
+
+        .folder-files { display: none; background: #161616; border-bottom: 1px solid #222; }
+        .folder-files.open { display: block; }
+
+        .file-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #1e1e1e;
+            gap: 10px;
+        }
+
+        .file-row:last-child { border-bottom: none; }
+
+        .file-thumb {
+            width: 64px;
+            height: 36px;
+            object-fit: cover;
+            border-radius: 3px;
+            flex-shrink: 0;
+            background: #222;
+        }
+
+        .file-thumb-placeholder {
+            width: 64px;
+            height: 36px;
+            background: #222;
+            border-radius: 3px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            color: #444;
+        }
+
+        .file-info { flex: 1; min-width: 0; }
+        .file-time { font-size: 0.85rem; }
+
+        .file-name {
+            font-size: 0.7rem;
+            color: #555;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+
+        .btn-play {
+            background: #1a3a1a;
+            border: 1px solid #2a5a2a;
+            border-radius: 5px;
+            color: #8e8;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .btn-play:active { background: #2a5a2a; }
+
+        .btn-del-file {
+            background: #3a1a1a;
+            border: 1px solid #5a2a2a;
+            border-radius: 5px;
+            color: #e88;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .btn-del-file:active { background: #5a2a2a; }
+        .files-loading { padding: 10px 12px; font-size: 0.8rem; color: #555; }
+        .files-error { padding: 10px 12px; font-size: 0.8rem; color: #a44; }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0 4px;
+            gap: 8px;
+        }
+
+        .page-btn {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            color: #eee;
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .page-btn:disabled { opacity: 0.3; cursor: default; }
+        .page-btn:active:not(:disabled) { background: #444; }
+        .page-info { font-size: 0.8rem; color: #666; }
+
+        .btn-clear {
+            background: #3a1a1a;
+            border: 1px solid #5a2a2a;
+            border-radius: 5px;
+            color: #e88;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Home Cameras</h1>
+</header>
+
+<div id="tabs">
+    <div class="tab active" onclick="switchTab(0)">Front Door</div>
+    <div class="tab" onclick="switchTab(1)">Bedroom</div>
+</div>
+
+<div id="panel-0" class="panel active"></div>
+<div id="panel-1" class="panel"></div>
+
+<script>
+    var CAMERAS = [
+        { name: 'Front Door', host: '192.168.1.81' },
+        { name: 'Bedroom',    host: '192.168.1.86' }
+    ];
+
+    var cameraState = CAMERAS.map(function() {
+        return { totalFolders: 0, currentPage: 0, loaded: false };
+    });
+
+    var PAGE_SIZE = 8;
+
+    function buildPanel(idx) {
+        var cam = CAMERAS[idx];
+        var p = document.getElementById('panel-' + idx);
+        p.innerHTML = [
+            '<div class="stream-container">',
+            '  <iframe class="stream-frame" src="http://' + cam.host + ':1984/stream.html?src=ch0_1.h264" allowfullscreen></iframe>',
+            '</div>',
+            '<div class="ptz-section">',
+            '  <div class="section-title">PTZ Control</div>',
+            '  <div class="ptz-grid">',
+            '    <button class="ptz-btn" data-dir="up_left">↖</button>',
+            '    <button class="ptz-btn" data-dir="up">↑</button>',
+            '    <button class="ptz-btn" data-dir="up_right">↗</button>',
+            '    <button class="ptz-btn" data-dir="left">←</button>',
+            '    <button class="ptz-btn ptz-center" data-dir="center">⌂</button>',
+            '    <button class="ptz-btn" data-dir="right">→</button>',
+            '    <button class="ptz-btn" data-dir="down_left">↙</button>',
+            '    <button class="ptz-btn" data-dir="down">↓</button>',
+            '    <button class="ptz-btn" data-dir="down_right">↘</button>',
+            '  </div>',
+            '</div>',
+            '<div class="player-section" id="player-' + idx + '">',
+            '  <div class="player-title">',
+            '    <span class="player-label-' + idx + '">Now playing</span>',
+            '    <button class="player-close" onclick="closePlayer(' + idx + ')">✕</button>',
+            '  </div>',
+            '  <video class="video-player" id="video-' + idx + '" controls autoplay></video>',
+            '</div>',
+            '<div class="recordings-section">',
+            '  <div class="recordings-header">',
+            '    <div class="section-title" style="margin-bottom:0">Recordings</div>',
+            '    <button class="btn-clear" id="btn-clear-' + idx + '" onclick="clearAll(' + idx + ')">Clear All</button>',
+            '  </div>',
+            '  <div class="recordings-msg" id="rec-msg-' + idx + '">Loading...</div>',
+            '  <div id="folders-' + idx + '"></div>',
+            '  <div class="pagination" id="pagination-' + idx + '" style="display:none">',
+            '    <button class="page-btn" id="btn-prev-' + idx + '" onclick="changePage(' + idx + ',-1)">&#8592; Prev</button>',
+            '    <span class="page-info" id="page-info-' + idx + '"></span>',
+            '    <button class="page-btn" id="btn-next-' + idx + '" onclick="changePage(' + idx + ',1)">Next &#8594;</button>',
+            '  </div>',
+            '</div>'
+        ].join('');
+
+        p.querySelectorAll('.ptz-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var dir = btn.dataset.dir;
+                btn.disabled = true;
+                var url = dir === 'center'
+                    ? 'http://' + cam.host + '/cgi-bin/preset.sh?action=go_preset&num=0'
+                    : 'http://' + cam.host + '/cgi-bin/ptz.sh?dir=' + dir;
+                fetch(url).finally(function() { btn.disabled = false; });
+            });
+        });
+    }
+
+    function switchTab(idx) {
+        document.querySelectorAll('.tab').forEach(function(t, i) {
+            t.classList.toggle('active', i === idx);
+        });
+        document.querySelectorAll('.panel').forEach(function(p, i) {
+            p.classList.toggle('active', i === idx);
+        });
+        if (!cameraState[idx].loaded) {
+            cameraState[idx].loaded = true;
+            fetchPage(idx, 0);
+        }
+    }
+
+    function fetchPage(idx, page) {
+        var cam = CAMERAS[idx];
+        var container = document.getElementById('folders-' + idx);
+        if (page !== 0) {
+            container.innerHTML = '<div class="files-loading">Loading...</div>';
+        }
+        fetch('http://' + cam.host + '/cgi-bin/eventsdir.sh?page=' + page + '&size=' + PAGE_SIZE)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                cameraState[idx].totalFolders = data.total || 0;
+                cameraState[idx].currentPage = page;
+                var msg = document.getElementById('rec-msg-' + idx);
+                if (cameraState[idx].totalFolders === 0) {
+                    msg.textContent = 'No recordings found.';
+                    msg.style.display = 'block';
+                    container.innerHTML = '';
+                    document.getElementById('pagination-' + idx).style.display = 'none';
+                    return;
+                }
+                msg.style.display = 'none';
+                container.innerHTML = '';
+                (data.records || []).forEach(function(rec) {
+                    container.appendChild(buildFolderRow(idx, rec));
+                });
+                var totalPages = Math.ceil(cameraState[idx].totalFolders / PAGE_SIZE);
+                var pagination = document.getElementById('pagination-' + idx);
+                if (cameraState[idx].totalFolders > PAGE_SIZE) {
+                    pagination.style.display = 'flex';
+                    document.getElementById('btn-prev-' + idx).disabled = page === 0;
+                    document.getElementById('btn-next-' + idx).disabled = page >= totalPages - 1;
+                    document.getElementById('page-info-' + idx).textContent = (page + 1) + ' / ' + totalPages;
+                } else {
+                    pagination.style.display = 'none';
+                }
+            })
+            .catch(function() {
+                document.getElementById('rec-msg-' + idx).textContent = 'Failed to load recordings.';
+            });
+    }
+
+    function changePage(idx, delta) {
+        var totalPages = Math.ceil(cameraState[idx].totalFolders / PAGE_SIZE);
+        var next = cameraState[idx].currentPage + delta;
+        if (next >= 0 && next < totalPages) fetchPage(idx, next);
+    }
+
+    function buildFolderRow(idx, rec) {
+        var cam = CAMERAS[idx];
+        var wrapper = document.createElement('div');
+
+        var row = document.createElement('div');
+        row.className = 'folder-row';
+
+        var chevron = document.createElement('span');
+        chevron.className = 'folder-chevron';
+        chevron.textContent = '▶';
+
+        var info = document.createElement('div');
+        info.className = 'folder-info';
+        info.innerHTML = '<div class="folder-datetime">' + rec.datetime + '</div>' +
+                         '<div class="folder-dirname">' + rec.dirname + '</div>';
+
+        var delBtn = document.createElement('button');
+        delBtn.className = 'btn-del-folder';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (!confirm('Delete folder ' + rec.dirname + '?')) return;
+            fetch('http://' + cam.host + '/cgi-bin/eventsdirdel.sh?dir=' + rec.dirname)
+                .then(function() {
+                    cameraState[idx].totalFolders = Math.max(0, cameraState[idx].totalFolders - 1);
+                    var maxPage = Math.max(0, Math.ceil(cameraState[idx].totalFolders / PAGE_SIZE) - 1);
+                    fetchPage(idx, Math.min(cameraState[idx].currentPage, maxPage));
+                })
+                .catch(function() { alert('Delete failed.'); });
+        });
+
+        row.appendChild(chevron);
+        row.appendChild(info);
+        row.appendChild(delBtn);
+
+        var filesPanel = document.createElement('div');
+        filesPanel.className = 'folder-files';
+        var loaded = false;
+
+        row.addEventListener('click', function() {
+            var isOpen = filesPanel.classList.contains('open');
+            if (isOpen) {
+                filesPanel.classList.remove('open');
+                chevron.classList.remove('open');
+            } else {
+                filesPanel.classList.add('open');
+                chevron.classList.add('open');
+                if (!loaded) {
+                    loaded = true;
+                    loadFiles(idx, rec.dirname, filesPanel);
+                }
+            }
+        });
+
+        wrapper.appendChild(row);
+        wrapper.appendChild(filesPanel);
+        return wrapper;
+    }
+
+    function loadFiles(idx, dirname, panel) {
+        var cam = CAMERAS[idx];
+        panel.innerHTML = '<div class="files-loading">Loading...</div>';
+        fetch('http://' + cam.host + '/cgi-bin/eventsfile.sh?dirname=' + dirname)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                panel.innerHTML = '';
+                var records = data.records || [];
+                if (records.length === 0) {
+                    panel.innerHTML = '<div class="files-loading">No files.</div>';
+                    return;
+                }
+                records.forEach(function(rec) {
+                    panel.appendChild(buildFileRow(idx, dirname, rec));
+                });
+            })
+            .catch(function() {
+                panel.innerHTML = '<div class="files-error">Failed to load files.</div>';
+            });
+    }
+
+    function buildFileRow(idx, dirname, rec) {
+        var cam = CAMERAS[idx];
+        var row = document.createElement('div');
+        row.className = 'file-row';
+
+        if (rec.thumbfilename) {
+            var img = document.createElement('img');
+            img.className = 'file-thumb';
+            img.src = 'http://' + cam.host + '/record/' + dirname + '/' + rec.thumbfilename;
+            img.alt = '';
+            row.appendChild(img);
+        } else {
+            var ph = document.createElement('div');
+            ph.className = 'file-thumb-placeholder';
+            ph.textContent = 'No preview';
+            row.appendChild(ph);
+        }
+
+        var info = document.createElement('div');
+        info.className = 'file-info';
+        info.innerHTML = '<div class="file-time">' + rec.time + '</div>' +
+                         '<div class="file-name">' + rec.filename + '</div>';
+        row.appendChild(info);
+
+        var actions = document.createElement('div');
+        actions.className = 'file-actions';
+
+        var playBtn = document.createElement('button');
+        playBtn.className = 'btn-play';
+        playBtn.textContent = '▶ Play';
+        playBtn.addEventListener('click', function() {
+            var section = document.getElementById('player-' + idx);
+            var video = document.getElementById('video-' + idx);
+            document.querySelector('.player-label-' + idx).textContent = rec.time + ' — ' + rec.filename;
+            video.src = 'http://' + cam.host + '/record/' + dirname + '/' + rec.filename;
+            section.style.display = 'block';
+            section.scrollIntoView({ behavior: 'smooth' });
+            video.play();
+        });
+
+        var delBtn = document.createElement('button');
+        delBtn.className = 'btn-del-file';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', function() {
+            if (!confirm('Delete ' + rec.filename + '?')) return;
+            fetch('http://' + cam.host + '/cgi-bin/eventsfiledel.sh?file=' + dirname + '/' + rec.filename)
+                .then(function() { row.remove(); })
+                .catch(function() { alert('Delete failed.'); });
+        });
+
+        actions.appendChild(playBtn);
+        actions.appendChild(delBtn);
+        row.appendChild(actions);
+        return row;
+    }
+
+    function closePlayer(idx) {
+        var video = document.getElementById('video-' + idx);
+        video.pause();
+        video.src = '';
+        document.getElementById('player-' + idx).style.display = 'none';
+    }
+
+    function clearAll(idx) {
+        var cam = CAMERAS[idx];
+        if (cameraState[idx].totalFolders === 0) return;
+        if (!confirm('Delete ALL ' + cameraState[idx].totalFolders + ' recordings from ' + cam.name + '?')) return;
+        var btn = document.getElementById('btn-clear-' + idx);
+        btn.disabled = true;
+        btn.textContent = 'Loading...';
+        fetch('http://' + cam.host + '/cgi-bin/eventsdir.sh?names=1')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.textContent = 'Deleting...';
+                return Promise.all((data.dirnames || []).map(function(d) {
+                    return fetch('http://' + cam.host + '/cgi-bin/eventsdirdel.sh?dir=' + d).catch(function() {});
+                }));
+            })
+            .then(function() {
+                cameraState[idx].totalFolders = 0;
+                document.getElementById('folders-' + idx).innerHTML = '';
+                document.getElementById('pagination-' + idx).style.display = 'none';
+                var msg = document.getElementById('rec-msg-' + idx);
+                msg.textContent = 'No recordings found.';
+                msg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Clear All';
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.textContent = 'Clear All';
+                alert('Delete failed.');
+            });
+    }
+
+    // Build both panels and load first camera
+    CAMERAS.forEach(function(_, idx) { buildPanel(idx); });
+    fetchPage(0, 0);
+    cameraState[0].loaded = true;
+</script>
+
+</body>
+</html>
