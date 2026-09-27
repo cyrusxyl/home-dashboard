@@ -12,7 +12,9 @@ Aggregated camera dashboard for two Yi Home Dome Guard cameras, served from a Ra
 ## Access
 
 - **Local network:** `http://192.168.1.217:8080`
-- **Remote (Tailscale):** `http://raspberrypi.tail80333c.ts.net`
+- **Remote (Tailscale):** `http://raspberrypi.tail80333c.ts.net:8080`
+
+The Pi launcher at `http://192.168.1.217` (port 80) also links to this dashboard.
 
 ## Pi Setup
 
@@ -39,36 +41,17 @@ Authenticate via the printed URL, then approve the subnet in the [Tailscale admi
 
 ### 4. Deploy the dashboard
 
-```sh
-mkdir -p ~/dashboard
-scp index.html cyrus@192.168.1.217:~/dashboard/
-```
+The `home-server` repo (`cyrusxyl/home-server`) deploys this dashboard. It clones this repo to `~/workspace/home-dashboard` and runs it as the systemd unit `home-dashboard` on port 8080.
 
-### 5. Start the HTTP server
+Push changes to this repo, then run on the Pi:
 
 ```sh
-cd ~/dashboard && nohup python3 -m http.server 8080 &
+~/workspace/home-server/deploy.sh
 ```
 
-To auto-start on reboot, add to crontab (`crontab -e`):
+Do not start the server with crontab or `nohup`. Do not add an iptables redirect for port 80. The `home-server` launcher uses port 80.
 
-```
-@reboot cd /home/cyrus/dashboard && python3 -m http.server 8080 >> /home/cyrus/dashboard/server.log 2>&1
-```
-
-### 6. Port 80 redirect (so no :8080 in the URL)
-
-```sh
-TSIP=$(tailscale ip -4)
-sudo iptables -t nat -A PREROUTING -i tailscale0 -d $TSIP -p tcp --dport 80 -j REDIRECT --to-port 8080
-
-sudo apt install iptables-persistent -y
-sudo netfilter-persistent save
-```
-
-> **Important:** scope the rule to `-d $TSIP` to avoid intercepting port 80 traffic destined for the cameras on the same subnet.
-
-### 7. Enable MagicDNS
+### 5. Enable MagicDNS
 
 In the [Tailscale admin console](https://tailscale.com/admin) → DNS → enable MagicDNS.
 
